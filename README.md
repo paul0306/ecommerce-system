@@ -56,10 +56,6 @@ npm run dev
 - `orders`
 - `order_detail`
 
-### 題目要求 DB 腳本位置
-- [DB/ddl.sql](./DB/ddl.sql)
-- [DB/dml.sql](./DB/dml.sql)
-- [DB/stored_procedures.sql](./DB/stored_procedures.sql)
 
 ## API 說明
 
