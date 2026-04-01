@@ -31,17 +31,19 @@ public class OrderService {
     @Transactional(readOnly = true)
     public OrderResponse getOrder(String orderId) {
         try {
-            OrderRepository.OrderSummary summary = orderRepository.loadOrderSummary(orderId);
-            return new OrderResponse(
-                    summary.orderId(),
-                    summary.memberId(),
-                    summary.totalPrice(),
-                    summary.payStatus(),
-                    orderRepository.loadOrderDetails(orderId)
-            );
+            return toOrderResponse(orderRepository.loadOrderSummary(orderId));
         } catch (EmptyResultDataAccessException ex) {
             throw new IllegalArgumentException("查無此訂單：" + orderId);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getOrdersByMemberId(String memberId) {
+        List<OrderRepository.OrderSummary> summaries = orderRepository.loadOrderSummariesByMemberId(memberId);
+        if (summaries.isEmpty()) {
+            throw new IllegalArgumentException("查無此會員的訂單：" + memberId);
+        }
+        return summaries.stream().map(this::toOrderResponse).toList();
     }
 
     @Transactional
@@ -79,5 +81,15 @@ public class OrderService {
         }
 
         return getOrder(orderId);
+    }
+
+    private OrderResponse toOrderResponse(OrderRepository.OrderSummary summary) {
+        return new OrderResponse(
+                summary.orderId(),
+                summary.memberId(),
+                summary.totalPrice(),
+                summary.payStatus(),
+                orderRepository.loadOrderDetails(summary.orderId())
+        );
     }
 }

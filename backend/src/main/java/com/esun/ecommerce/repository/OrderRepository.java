@@ -14,6 +14,7 @@ import java.util.List;
 public class OrderRepository {
 
     private static final RowMapper<OrderDetailView> ORDER_DETAIL_ROW_MAPPER = OrderRepository::mapOrderDetail;
+    private static final RowMapper<OrderSummary> ORDER_SUMMARY_ROW_MAPPER = OrderRepository::mapOrderSummary;
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -40,16 +41,28 @@ public class OrderRepository {
     }
 
     public OrderSummary loadOrderSummary(String orderId) {
-        return jdbcTemplate.queryForObject("CALL sp_get_order_summary(?)", (rs, rowNum) -> new OrderSummary(
-                rs.getString("order_id"),
-                rs.getString("member_id"),
-                rs.getBigDecimal("price"),
-                rs.getInt("pay_status")
-        ), orderId);
+        return jdbcTemplate.queryForObject("CALL sp_get_order_summary(?)", ORDER_SUMMARY_ROW_MAPPER, orderId);
+    }
+
+    public List<OrderSummary> loadOrderSummariesByMemberId(String memberId) {
+        return jdbcTemplate.query(
+                "SELECT order_id, member_id, price, pay_status FROM orders WHERE member_id = ? ORDER BY created_at DESC, order_id DESC",
+                ORDER_SUMMARY_ROW_MAPPER,
+                memberId
+        );
     }
 
     public List<OrderDetailView> loadOrderDetails(String orderId) {
         return jdbcTemplate.query("CALL sp_get_order_details(?)", ORDER_DETAIL_ROW_MAPPER, orderId);
+    }
+
+    private static OrderSummary mapOrderSummary(ResultSet rs, int rowNum) throws SQLException {
+        return new OrderSummary(
+                rs.getString("order_id"),
+                rs.getString("member_id"),
+                rs.getBigDecimal("price"),
+                rs.getInt("pay_status")
+        );
     }
 
     private static OrderDetailView mapOrderDetail(ResultSet rs, int rowNum) throws SQLException {

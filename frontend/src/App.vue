@@ -4,10 +4,12 @@ import { computed, onMounted, reactive, ref } from 'vue'
 const productForm = reactive({ productId: '', productName: '', price: '', quantity: '' })
 const orderForm = reactive({ memberId: '' })
 const orderQueryForm = reactive({ orderId: '' })
+const memberQueryForm = reactive({ memberId: '' })
 const products = ref([])
 const quantities = reactive({})
 const orderResult = ref(null)
 const queriedOrder = ref(null)
+const memberOrders = ref([])
 const busy = ref(false)
 const message = ref('')
 
@@ -93,6 +95,7 @@ async function submitOrder() {
       })
     })
     queriedOrder.value = orderResult.value
+    memberQueryForm.memberId = orderResult.value.memberId
     orderQueryForm.orderId = orderResult.value.orderId
     message.value = `訂單 ${orderResult.value.orderId} 建立成功`
     Object.keys(quantities).forEach((key) => {
@@ -115,6 +118,20 @@ async function queryOrder() {
     message.value = `訂單 ${queriedOrder.value.orderId} 查詢成功`
   } catch (error) {
     queriedOrder.value = null
+    message.value = error.message
+  } finally {
+    busy.value = false
+  }
+}
+
+async function queryOrdersByMemberId() {
+  busy.value = true
+  message.value = ''
+  try {
+    memberOrders.value = await request(`/api/orders?memberId=${encodeURIComponent(memberQueryForm.memberId)}`)
+    message.value = `會員 ${memberQueryForm.memberId} 查詢成功，共 ${memberOrders.value.length} 筆訂單`
+  } catch (error) {
+    memberOrders.value = []
     message.value = error.message
   } finally {
     busy.value = false
@@ -202,29 +219,58 @@ onMounted(loadProducts)
       </article>
     </section>
 
-    <section class="card result">
-      <h2>查詢訂單</h2>
-      <form class="query-form" @submit.prevent="queryOrder">
-        <label>
-          訂單編號
-          <input v-model.trim="orderQueryForm.orderId" placeholder="例如 Ms20260331232925" required />
-        </label>
-        <button :disabled="busy || !orderQueryForm.orderId" type="submit">查詢訂單</button>
-      </form>
+    <section class="grid lower-grid">
+      <article class="card result">
+        <h2>依訂單編號查詢</h2>
+        <form class="query-form" @submit.prevent="queryOrder">
+          <label>
+            訂單編號
+            <input v-model.trim="orderQueryForm.orderId" placeholder="例如 Ms20260401025330" required />
+          </label>
+          <button :disabled="busy || !orderQueryForm.orderId" type="submit">查詢訂單</button>
+        </form>
 
-      <div v-if="queriedOrder" class="order-panel">
-        <p>訂單編號：{{ queriedOrder.orderId }}</p>
-        <p>會員編號：{{ queriedOrder.memberId }}</p>
-        <p>付款狀態：{{ queriedOrder.payStatus === 1 ? '已付款' : '未付款' }}</p>
-        <p>訂單總金額：{{ currency(queriedOrder.totalPrice) }}</p>
-        <div class="summary-list">
-          <div v-for="item in queriedOrder.items" :key="`${queriedOrder.orderId}-${item.productId}`" class="summary-item">
-            <span>{{ item.productName }} x {{ item.quantity }}</span>
-            <strong>{{ currency(item.itemPrice) }}</strong>
+        <div v-if="queriedOrder" class="order-panel">
+          <p>訂單編號：{{ queriedOrder.orderId }}</p>
+          <p>會員編號：{{ queriedOrder.memberId }}</p>
+          <p>付款狀態：{{ queriedOrder.payStatus === 1 ? '已付款' : '未付款' }}</p>
+          <p>訂單總金額：{{ currency(queriedOrder.totalPrice) }}</p>
+          <div class="summary-list">
+            <div v-for="item in queriedOrder.items" :key="`${queriedOrder.orderId}-${item.productId}`" class="summary-item">
+              <span>{{ item.productName }} x {{ item.quantity }}</span>
+              <strong>{{ currency(item.itemPrice) }}</strong>
+            </div>
           </div>
         </div>
-      </div>
-      <p v-else class="empty-state">輸入訂單編號後即可查詢訂單內容。</p>
+        <p v-else class="empty-state">輸入訂單編號後即可查詢訂單內容。</p>
+      </article>
+
+      <article class="card result">
+        <h2>依會員編號查詢</h2>
+        <form class="query-form" @submit.prevent="queryOrdersByMemberId">
+          <label>
+            會員編號
+            <input v-model.trim="memberQueryForm.memberId" placeholder="例如 55688" required />
+          </label>
+          <button :disabled="busy || !memberQueryForm.memberId" type="submit">查詢會員訂單</button>
+        </form>
+
+        <div v-if="memberOrders.length > 0" class="member-orders">
+          <article v-for="order in memberOrders" :key="order.orderId" class="member-order-card">
+            <p>訂單編號：{{ order.orderId }}</p>
+            <p>會員編號：{{ order.memberId }}</p>
+            <p>付款狀態：{{ order.payStatus === 1 ? '已付款' : '未付款' }}</p>
+            <p>訂單總金額：{{ currency(order.totalPrice) }}</p>
+            <div class="summary-list">
+              <div v-for="item in order.items" :key="`${order.orderId}-${item.productId}`" class="summary-item">
+                <span>{{ item.productName }} x {{ item.quantity }}</span>
+                <strong>{{ currency(item.itemPrice) }}</strong>
+              </div>
+            </div>
+          </article>
+        </div>
+        <p v-else class="empty-state">輸入會員編號後即可查詢該會員的所有訂單。</p>
+      </article>
     </section>
 
     <section v-if="orderResult" class="card result">
