@@ -4,4 +4,9 @@ frontend/dist/
 backend/data/
 .idea/
 *.iml
-
+.vscode/
+*.log
+backend/*.log
+frontend/*.log
+.DS_Store
+Thumbs.db
